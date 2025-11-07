@@ -175,14 +175,6 @@ export default function DiseaseDetectionUpload({ userId }: { userId: string }) {
                 <h4 className="font-semibold mb-2">Treatment Recommendations</h4>
                 <p className="text-sm text-foreground/80">{result.treatment}</p>
               </div>
-
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-xs">
-                  This is an AI-powered analysis and should not replace professional veterinary advice. Consult with an
-                  aquatic veterinarian for serious conditions.
-                </AlertDescription>
-              </Alert>
             </div>
           )}
         </CardContent>

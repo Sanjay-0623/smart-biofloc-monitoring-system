@@ -168,7 +168,11 @@ export async function POST(request: NextRequest) {
 
     try {
       console.log("[v0] Uploading to Blob storage...")
-      const blob = await put(`fish-disease/${userId}/${Date.now()}-${file.name}`, file, {
+      const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, "_")
+      const timestamp = Date.now()
+      const blobPath = `fish-disease/${userId}/${timestamp}-${sanitizedFilename}`
+
+      const blob = await put(blobPath, file, {
         access: "public",
       })
       imageUrl = blob.url
