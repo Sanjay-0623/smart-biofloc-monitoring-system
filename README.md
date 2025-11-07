@@ -1,6 +1,6 @@
 # Smart Biofloc Monitoring System
 
-A comprehensive full-stack application for fish farming management with AI-powered disease detection, deepfake verification, and real-time biofloc monitoring.
+A comprehensive full-stack application for fish farming management with AI-powered disease detection, real-time biofloc monitoring.
 
 ## Features
 
@@ -17,13 +17,6 @@ A comprehensive full-stack application for fish farming management with AI-power
 - Detects: Fin Rot, Ich, Dropsy, Columnaris, Fungal Infections, and more
 - Confidence scores and detailed treatment recommendations
 - Complete detection history with image storage
-
-### Deepfake Detection System
-- Upload images or videos to verify authenticity
-- AI-powered deepfake detection (mock model, replaceable with real APIs)
-- Risk level classification (Low/Medium/High)
-- Artifact detection and detailed analysis
-- Supports both images and videos
 
 ### User Management
 - Secure authentication with Supabase Auth
@@ -112,14 +105,12 @@ WHERE email = 'your-admin-email@example.com';
 │   ├── auth/               # Authentication pages
 │   ├── user/               # User dashboard and history
 │   ├── disease-detection/  # Fish disease detection
-│   ├── deepfake-detection/ # Deepfake verification
 │   ├── dashboard/          # Biofloc monitoring
 │   └── api/                # API routes
 ├── components/             # Reusable UI components
 ├── lib/                    # Utilities and services
 │   ├── supabase/          # Supabase client utilities
 │   ├── fish-disease-model.ts
-│   ├── deepfake-detection-model.ts
 │   └── email-notifications.ts
 └── scripts/               # Database migration scripts
 \`\`\`
@@ -164,16 +155,6 @@ const response = await fetch('https://api-inference.huggingface.co/models/your-m
 \`\`\`
 
 3. **PyTorch with ONNX Runtime**: Export your PyTorch model to ONNX and use onnxruntime-node
-
-### Deepfake Detection
-
-Replace the mock implementation with real services:
-
-- **Microsoft Azure Face API**
-- **AWS Rekognition**
-- **Deepware Scanner API**
-- **Sensity AI**
-- **Custom trained models**
 
 ## Optional Enhancements
 
@@ -241,17 +222,6 @@ const channel = supabase
 - `treatment` (text)
 - `created_at` (timestamp)
 
-### deepfake_detections
-- `id` (uuid, primary key)
-- `user_id` (uuid, foreign key)
-- `media_url` (text)
-- `media_type` (text: 'image' | 'video')
-- `is_deepfake` (boolean)
-- `confidence` (float)
-- `explanation` (text)
-- `artifacts_found` (text[])
-- `risk_level` (text: 'low' | 'medium' | 'high')
-- `created_at` (timestamp)
 
 ## Deployment
 
