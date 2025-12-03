@@ -3,9 +3,6 @@ import type { Metadata } from "next"
 import { Work_Sans, Open_Sans } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
-import UserNav from "@/components/user-nav"
-import AdminNav from "@/components/admin-nav"
-import { getSession } from "@/lib/auth-simple"
 import "./globals.css"
 
 const workSans = Work_Sans({
@@ -28,22 +25,14 @@ export const metadata: Metadata = {
   generator: "v0.app",
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const user = await getSession()
-
-  let isAdmin = false
-  if (user) {
-    isAdmin = user.role === "admin"
-  }
-
   return (
     <html lang="en">
       <body className={`font-sans ${workSans.variable} ${openSans.variable}`}>
-        {user && (isAdmin ? <AdminNav /> : <UserNav />)}
         <Suspense fallback={null}>{children}</Suspense>
         <Analytics />
       </body>
