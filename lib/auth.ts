@@ -17,29 +17,37 @@ export const authOptions: NextAuthOptions = {
 
         if (!credentials?.email || !credentials?.password) {
           console.log("[v0] Missing credentials")
-          throw new Error("Missing email or password")
+          return null
         }
 
         try {
-          const users = await sql`
+          const queryPromise = sql`
             SELECT * FROM profiles WHERE email = ${credentials.email}
           `
+
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Database query timeout")), 10000),
+          )
+
+          const users = (await Promise.race([queryPromise, timeoutPromise])) as any[]
+
           console.log("[v0] User query result:", users.length > 0 ? "User found" : "No user found")
 
           const user = users[0]
 
           if (!user || !user.password_hash) {
             console.log("[v0] Invalid user or no password hash")
-            throw new Error("Invalid email or password")
+            return null
           }
 
           const isValidPassword = await bcrypt.compare(credentials.password, user.password_hash)
           console.log("[v0] Password validation:", isValidPassword ? "Success" : "Failed")
 
           if (!isValidPassword) {
-            throw new Error("Invalid email or password")
+            return null
           }
 
+          console.log("[v0] Returning authenticated user:", user.email)
           return {
             id: user.id.toString(),
             email: user.email,
@@ -48,7 +56,7 @@ export const authOptions: NextAuthOptions = {
           }
         } catch (error) {
           console.error("[v0] Auth error:", error)
-          throw error
+          return null
         }
       },
     },

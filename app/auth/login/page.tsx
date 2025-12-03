@@ -48,27 +48,35 @@ function LoginContent() {
     try {
       console.log("[v0] Attempting login for:", email)
 
-      const result = await signIn("credentials", {
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request timed out")), 15000))
+
+      const signInPromise = signIn("credentials", {
         email: email.trim().toLowerCase(),
         password,
         redirect: false,
-        callbackUrl: "/user/dashboard",
       })
+
+      const result = (await Promise.race([signInPromise, timeoutPromise])) as any
 
       console.log("[v0] SignIn result:", result)
 
       if (result?.error) {
         console.log("[v0] Login error:", result.error)
         setError("Invalid email or password. Please try again.")
-        setIsLoading(false)
       } else if (result?.ok) {
-        console.log("[v0] Login successful, redirecting to:", result.url || "/user/dashboard")
-        router.push(result.url || "/user/dashboard")
-        router.refresh()
+        console.log("[v0] Login successful, redirecting...")
+        window.location.href = "/user/dashboard"
+      } else {
+        setError("Login failed. Please try again.")
       }
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error("[v0] Login exception:", error)
-      setError("An unexpected error occurred. Please try again.")
+      if (error?.message === "Request timed out") {
+        setError("Login request timed out. Please check your connection and try again.")
+      } else {
+        setError("An unexpected error occurred. Please try again.")
+      }
+    } finally {
       setIsLoading(false)
     }
   }
