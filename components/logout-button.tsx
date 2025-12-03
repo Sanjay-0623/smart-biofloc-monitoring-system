@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { LogOut } from "lucide-react"
-import { signOut } from "next-auth/react"
 
 export default function LogoutButton() {
   const [isLoading, setIsLoading] = useState(false)
@@ -12,9 +11,13 @@ export default function LogoutButton() {
 
   const handleLogout = async () => {
     setIsLoading(true)
-    await signOut({ redirect: false })
-    router.push("/auth/login")
-    router.refresh()
+    try {
+      await fetch("/api/auth/logout", { method: "POST" })
+      window.location.href = "/auth/login"
+    } catch (error) {
+      console.error("[v0] Logout error:", error)
+      setIsLoading(false)
+    }
   }
 
   return (

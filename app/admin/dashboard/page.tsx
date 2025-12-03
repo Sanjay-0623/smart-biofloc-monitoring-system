@@ -1,40 +1,33 @@
 import { redirect } from "next/navigation"
-import { createServerClient } from "@/lib/supabase/server"
+import { getSession } from "@/lib/auth-simple"
+import { sql } from "@/lib/db"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, FileImage, Activity } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
 export default async function AdminDashboardPage() {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSession()
 
-  if (!user) {
-    redirect("/admin/login")
-  }
-
-  // Check if user is admin
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-
-  if (profile?.role !== "admin") {
-    redirect("/user/dashboard")
+  if (!user || user.role !== "admin") {
+    redirect("/auth/login")
   }
 
   // Fetch statistics
-  const { count: totalUsers } = await supabase.from("profiles").select("*", { count: "exact", head: true })
+  const userCount = await sql`SELECT COUNT(*) as count FROM profiles`
+  const totalUsers = userCount[0]?.count || 0
 
-  const { count: totalDiseaseDetections } = await supabase
-    .from("fish_disease_detections")
-    .select("*", { count: "exact", head: true })
+  const detectionCount = await sql`SELECT COUNT(*) as count FROM fish_disease_detections`
+  const totalDiseaseDetections = detectionCount[0]?.count || 0
 
   // Fetch recent activity
-  const { data: recentDiseases } = await supabase
-    .from("fish_disease_detections")
-    .select("*, profiles(full_name)")
-    .order("created_at", { ascending: false })
-    .limit(5)
+  const recentDiseases = await sql`
+    SELECT d.*, p.full_name 
+    FROM fish_disease_detections d
+    LEFT JOIN profiles p ON d.user_id = p.id
+    ORDER BY d.created_at DESC 
+    LIMIT 5
+  `
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,7 +45,7 @@ export default async function AdminDashboardPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalUsers || 0}</div>
+              <div className="text-2xl font-bold">{totalUsers}</div>
               <p className="text-xs text-muted-foreground">Registered accounts</p>
             </CardContent>
           </Card>
@@ -63,7 +56,7 @@ export default async function AdminDashboardPage() {
               <FileImage className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalDiseaseDetections || 0}</div>
+              <div className="text-2xl font-bold">{totalDiseaseDetections}</div>
               <p className="text-xs text-muted-foreground">Total analyses</p>
             </CardContent>
           </Card>
@@ -128,8 +121,7 @@ export default async function AdminDashboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{detection.disease_name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {detection.profiles?.full_name || "Unknown User"} •{" "}
-                        {new Date(detection.created_at).toLocaleDateString()}
+                        {detection.full_name || "Unknown User"} • {new Date(detection.created_at).toLocaleDateString()}
                       </p>
                     </div>
                     <span className="text-sm font-medium">{(detection.confidence * 100).toFixed(0)}%</span>

@@ -1,35 +1,39 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { getToken } from "next-auth/jwt"
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
+  // Public paths that don't require authentication
   const isPublicPath =
     path === "/" ||
     path.startsWith("/auth/") ||
     path.startsWith("/_next") ||
-    path.startsWith("/api/auth") ||
-    path.startsWith("/api/_next") ||
+    path.startsWith("/api/auth/") ||
     path.match(/\.(ico|png|jpg|jpeg|svg|gif|webp)$/)
 
   if (isPublicPath) {
     return NextResponse.next()
   }
 
-  // Check authentication for protected routes
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-  })
+  // Check for session cookie
+  const sessionCookie = request.cookies.get("biofloc_session")
 
-  console.log("[v0] Middleware check for path:", path, "Token exists:", !!token)
+  if (!sessionCookie) {
+    console.log("[v0] No session, redirecting to login")
+    return NextResponse.redirect(new URL("/auth/login", request.url))
+  }
 
-  if (!token) {
-    console.log("[v0] No token found, redirecting to login")
-    const url = new URL("/auth/login", request.url)
-    url.searchParams.set("callbackUrl", request.url)
-    return NextResponse.redirect(url)
+  // Validate session is not expired
+  try {
+    const session = JSON.parse(atob(sessionCookie.value))
+    if (session.exp < Date.now()) {
+      console.log("[v0] Session expired, redirecting to login")
+      return NextResponse.redirect(new URL("/auth/login", request.url))
+    }
+  } catch (error) {
+    console.log("[v0] Invalid session, redirecting to login")
+    return NextResponse.redirect(new URL("/auth/login", request.url))
   }
 
   return NextResponse.next()

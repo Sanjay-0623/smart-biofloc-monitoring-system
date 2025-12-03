@@ -1,20 +1,14 @@
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
-import { sql } from "@/lib/db"
+import { getSession } from "@/lib/auth-simple"
 import { NextResponse } from "next/server"
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
+  const user = await getSession()
 
-  if (!session?.user) {
+  if (!user) {
     return NextResponse.json({ isAdmin: false }, { status: 401 })
   }
 
-  const profiles = await sql`
-    SELECT role FROM profiles WHERE id = ${(session.user as any).id}
-  `
-
-  const isAdmin = profiles[0]?.role === "admin"
+  const isAdmin = user.role === "admin"
 
   return NextResponse.json({ isAdmin })
 }

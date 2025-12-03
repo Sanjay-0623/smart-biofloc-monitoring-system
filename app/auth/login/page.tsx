@@ -7,89 +7,47 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useState, useEffect, Suspense } from "react"
-import { signIn, useSession } from "next-auth/react"
-import { Fish, AlertCircle, LogIn, CheckCircle2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { Fish, AlertCircle, LogIn } from "lucide-react"
 
-function LoginContent() {
+export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const { data: session, status } = useSession()
-  const searchParams = useSearchParams()
-  const signupSuccess = searchParams.get("signup")
-
-  useEffect(() => {
-    if (status === "authenticated") {
-      router.push("/user/dashboard")
-    }
-  }, [status, router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
 
-    if (!email.trim()) {
-      setError("Please enter your email address")
-      setIsLoading(false)
-      return
-    }
-
-    if (!password) {
-      setError("Please enter your password")
-      setIsLoading(false)
-      return
-    }
+    console.log("[v0] Attempting login for:", email)
 
     try {
-      console.log("[v0] Attempting login for:", email)
-
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request timed out")), 15000))
-
-      const signInPromise = signIn("credentials", {
-        email: email.trim().toLowerCase(),
-        password,
-        redirect: false,
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
       })
 
-      const result = (await Promise.race([signInPromise, timeoutPromise])) as any
+      const data = await response.json()
 
-      console.log("[v0] SignIn result:", result)
+      if (!response.ok) {
+        setError(data.error || "Invalid email or password")
+        setIsLoading(false)
+        return
+      }
 
-      if (result?.error) {
-        console.log("[v0] Login error:", result.error)
-        setError("Invalid email or password. Please try again.")
-      } else if (result?.ok) {
-        console.log("[v0] Login successful, redirecting...")
-        window.location.href = "/user/dashboard"
-      } else {
-        setError("Login failed. Please try again.")
-      }
-    } catch (error: any) {
-      console.error("[v0] Login exception:", error)
-      if (error?.message === "Request timed out") {
-        setError("Login request timed out. Please check your connection and try again.")
-      } else {
-        setError("An unexpected error occurred. Please try again.")
-      }
-    } finally {
+      console.log("[v0] Login successful, redirecting...")
+      // Force a hard navigation to ensure session is loaded
+      window.location.href = "/user/dashboard"
+    } catch (error) {
+      console.error("[v0] Login error:", error)
+      setError("An error occurred. Please try again.")
       setIsLoading(false)
     }
-  }
-
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -123,15 +81,6 @@ function LoginContent() {
               <p className="mt-2 text-sm text-muted-foreground">Sign in to access your aquaculture dashboard</p>
             </div>
 
-            {signupSuccess === "success" && (
-              <Alert className="mb-6 border-secondary bg-secondary/10 animate-in slide-in-from-top-2">
-                <CheckCircle2 className="h-4 w-4 text-secondary" />
-                <AlertDescription className="text-secondary">
-                  Account created successfully! Please sign in to continue.
-                </AlertDescription>
-              </Alert>
-            )}
-
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
@@ -146,6 +95,7 @@ function LoginContent() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-background/50 transition-all focus:bg-background"
                   autoComplete="email"
+                  disabled={isLoading}
                 />
               </div>
 
@@ -154,9 +104,6 @@ function LoginContent() {
                   <Label htmlFor="password" className="text-sm font-medium">
                     Password
                   </Label>
-                  <Link href="/auth/forgot-password" className="text-xs text-primary hover:underline">
-                    Forgot password?
-                  </Link>
                 </div>
                 <Input
                   id="password"
@@ -167,6 +114,7 @@ function LoginContent() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="bg-background/50 transition-all focus:bg-background"
                   autoComplete="current-password"
+                  disabled={isLoading}
                 />
               </div>
 
@@ -203,24 +151,8 @@ function LoginContent() {
               </Link>
             </div>
           </Card>
-
-          <p className="mt-6 text-center text-xs text-muted-foreground">Secure authentication powered by NextAuth.js</p>
         </div>
       </div>
     </div>
-  )
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen w-full items-center justify-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      }
-    >
-      <LoginContent />
-    </Suspense>
   )
 }
