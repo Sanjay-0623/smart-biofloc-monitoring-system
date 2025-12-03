@@ -34,15 +34,9 @@ export default async function AdminUsersPage() {
         .select("*", { count: "exact", head: true })
         .eq("user_id", userProfile.id)
 
-      const { count: deepfakeCount } = await supabase
-        .from("deepfake_detections")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userProfile.id)
-
       return {
         ...userProfile,
         diseaseCount: diseaseCount || 0,
-        deepfakeCount: deepfakeCount || 0,
       }
     }),
   )
@@ -91,12 +85,8 @@ export default async function AdminUsersPage() {
                     <span className="ml-2 font-semibold">{userProfile.diseaseCount}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Deepfake Checks:</span>
-                    <span className="ml-2 font-semibold">{userProfile.deepfakeCount}</span>
-                  </div>
-                  <div>
                     <span className="text-muted-foreground">Total Activity:</span>
-                    <span className="ml-2 font-semibold">{userProfile.diseaseCount + userProfile.deepfakeCount}</span>
+                    <span className="ml-2 font-semibold">{userProfile.diseaseCount}</span>
                   </div>
                 </div>
               </CardContent>

@@ -1,6 +1,6 @@
 # Smart Biofloc Monitoring System
 
-A comprehensive full-stack application for fish farming management with AI-powered disease detection, deepfake verification, and real-time biofloc monitoring.
+A comprehensive full-stack application for fish farming management with AI-powered disease detection and real-time biofloc monitoring.
 
 ## Features
 
@@ -10,6 +10,7 @@ A comprehensive full-stack application for fish farming management with AI-power
 - AI-powered water quality predictions
 - Automated recommendations based on sensor readings
 - Interactive charts and trend visualization
+- Support for 4 key sensors: pH, Temperature, Ultrasonic (water level), and Turbidity
 
 ### AI-Powered Fish Disease Detection
 - Upload fish images for instant disease analysis
@@ -18,15 +19,8 @@ A comprehensive full-stack application for fish farming management with AI-power
 - Confidence scores and detailed treatment recommendations
 - Complete detection history with image storage
 
-### Deepfake Detection System
-- Upload images or videos to verify authenticity
-- AI-powered deepfake detection (mock model, replaceable with real APIs)
-- Risk level classification (Low/Medium/High)
-- Artifact detection and detailed analysis
-- Supports both images and videos
-
 ### User Management
-- Secure authentication with Supabase Auth
+- Secure authentication with NextAuth.js
 - Email/password signup and login
 - User profiles with role-based access control
 - Personal dashboard with activity statistics
@@ -39,7 +33,6 @@ A comprehensive full-stack application for fish farming management with AI-power
 - Comprehensive analytics with interactive charts
 - Activity timeline and trend analysis
 - Disease distribution statistics
-- Deepfake vs authentic media ratios
 
 ### Additional Features
 - Dark/Light mode toggle
@@ -53,8 +46,8 @@ A comprehensive full-stack application for fish farming management with AI-power
 
 - **Framework**: Next.js 16 with App Router
 - **Language**: TypeScript
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
+- **Database**: Neon (PostgreSQL)
+- **Authentication**: NextAuth.js
 - **Storage**: Vercel Blob
 - **Styling**: Tailwind CSS v4
 - **UI Components**: shadcn/ui
@@ -66,7 +59,7 @@ A comprehensive full-stack application for fish farming management with AI-power
 ### Prerequisites
 
 - Node.js 18+ installed
-- Supabase account and project
+- Neon account and database
 - Vercel account (for deployment)
 
 ### Installation
@@ -77,15 +70,15 @@ A comprehensive full-stack application for fish farming management with AI-power
    npm install
    \`\`\`
 
-3. Set up environment variables (already configured in this project):
-   - Supabase credentials
+3. Set up environment variables:
+   - Neon database credentials (DATABASE_URL)
+   - NextAuth secret (NEXTAUTH_SECRET)
    - Vercel Blob token
 
 4. Run database migrations:
    - Execute SQL scripts in the `scripts` folder in order:
-     - `001_create_profiles.sql`
-     - `002_create_fish_disease_detections.sql`
-     - `003_create_deepfake_detections.sql`
+     - `001_create_profiles_neon.sql`
+     - `002_create_fish_disease_detections_neon.sql`
 
 5. Start the development server:
    \`\`\`bash
@@ -96,7 +89,7 @@ A comprehensive full-stack application for fish farming management with AI-power
 
 ### Creating an Admin User
 
-After signing up, manually update the user's role in Supabase:
+After signing up, manually update the user's role in your Neon database:
 
 \`\`\`sql
 UPDATE profiles 
@@ -112,16 +105,15 @@ WHERE email = 'your-admin-email@example.com';
 │   ├── auth/               # Authentication pages
 │   ├── user/               # User dashboard and history
 │   ├── disease-detection/  # Fish disease detection
-│   ├── deepfake-detection/ # Deepfake verification
 │   ├── dashboard/          # Biofloc monitoring
 │   └── api/                # API routes
 ├── components/             # Reusable UI components
 ├── lib/                    # Utilities and services
-│   ├── supabase/          # Supabase client utilities
+│   ├── supabase/          # Supabase client utilities (legacy)
 │   ├── fish-disease-model.ts
-│   ├── deepfake-detection-model.ts
 │   └── email-notifications.ts
-└── scripts/               # Database migration scripts
+├── scripts/               # Database migration scripts
+└── esp32_biofloc_monitor.ino  # ESP32 hardware code
 \`\`\`
 
 ## User Roles
@@ -129,7 +121,6 @@ WHERE email = 'your-admin-email@example.com';
 ### Regular Users
 - Sign up and log in
 - Upload fish images for disease detection
-- Upload media for deepfake verification
 - View personal dashboard and history
 - Access biofloc monitoring tools
 
@@ -165,15 +156,20 @@ const response = await fetch('https://api-inference.huggingface.co/models/your-m
 
 3. **PyTorch with ONNX Runtime**: Export your PyTorch model to ONNX and use onnxruntime-node
 
-### Deepfake Detection
+## Hardware Integration
 
-Replace the mock implementation with real services:
+### ESP32 Biofloc Monitor
 
-- **Microsoft Azure Face API**
-- **AWS Rekognition**
-- **Deepware Scanner API**
-- **Sensity AI**
-- **Custom trained models**
+The project includes complete ESP32 code for hardware sensor integration:
+
+**Supported Sensors:**
+- pH sensor (analog)
+- DS18B20 temperature sensor (OneWire)
+- HC-SR04 ultrasonic sensor (water level)
+- Turbidity sensor (analog)
+
+**Setup Instructions:**
+See `ESP32_SETUP_GUIDE.md` for complete wiring diagrams, calibration steps, and upload instructions.
 
 ## Optional Enhancements
 
@@ -201,25 +197,15 @@ Update `lib/email-notifications.ts` with your email service credentials.
 
 ### Real-time Updates
 
-Add real-time subscriptions using Supabase Realtime:
-\`\`\`typescript
-const channel = supabase
-  .channel('detections')
-  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fish_disease_detections' }, 
-    (payload) => {
-      // Handle new detection
-    }
-  )
-  .subscribe()
-\`\`\`
+Add real-time subscriptions using database triggers and webhooks.
 
 ## Security
 
-- Row Level Security (RLS) enabled on all tables
+- Row Level Security (RLS) enabled on all tables (Supabase)
 - Users can only access their own data
 - Admins have elevated permissions
-- Secure authentication with Supabase Auth
-- Protected API routes with user verification
+- Secure authentication with NextAuth.js
+- Protected API routes with session verification
 - Environment variables for sensitive data
 
 ## Database Schema
@@ -239,18 +225,6 @@ const channel = supabase
 - `confidence` (float)
 - `description` (text)
 - `treatment` (text)
-- `created_at` (timestamp)
-
-### deepfake_detections
-- `id` (uuid, primary key)
-- `user_id` (uuid, foreign key)
-- `media_url` (text)
-- `media_type` (text: 'image' | 'video')
-- `is_deepfake` (boolean)
-- `confidence` (float)
-- `explanation` (text)
-- `artifacts_found` (text[])
-- `risk_level` (text: 'low' | 'medium' | 'high')
 - `created_at` (timestamp)
 
 ## Deployment
@@ -288,4 +262,4 @@ For issues or questions:
 
 ---
 
-Built with Next.js, Supabase, and AI-powered detection systems for modern aquaculture management.
+Built with Next.js, Neon, and AI-powered detection systems for modern aquaculture management.
