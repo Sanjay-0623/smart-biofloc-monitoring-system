@@ -5,9 +5,13 @@ import { getToken } from "next-auth/jwt"
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
-  // Allow public paths
   const isPublicPath =
-    path.startsWith("/auth/") || path.startsWith("/_next") || path.startsWith("/api/auth") || path === "/"
+    path === "/" ||
+    path.startsWith("/auth/") ||
+    path.startsWith("/_next") ||
+    path.startsWith("/api/auth") ||
+    path.startsWith("/api/_next") ||
+    path.match(/\.(ico|png|jpg|jpeg|svg|gif|webp)$/)
 
   if (isPublicPath) {
     return NextResponse.next()
@@ -19,9 +23,12 @@ export async function middleware(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   })
 
-  // Redirect to login if not authenticated
-  if (!token && !isPublicPath) {
+  console.log("[v0] Middleware check for path:", path, "Token exists:", !!token)
+
+  if (!token) {
+    console.log("[v0] No token found, redirecting to login")
     const url = new URL("/auth/login", request.url)
+    url.searchParams.set("callbackUrl", request.url)
     return NextResponse.redirect(url)
   }
 

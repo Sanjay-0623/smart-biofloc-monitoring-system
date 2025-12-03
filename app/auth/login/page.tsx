@@ -46,21 +46,26 @@ function LoginContent() {
     }
 
     try {
+      console.log("[v0] Attempting login for:", email)
+
       const result = await signIn("credentials", {
-        email,
+        email: email.trim().toLowerCase(),
         password,
         redirect: false,
       })
 
+      console.log("[v0] SignIn result:", result)
+
       if (result?.error) {
+        console.log("[v0] Login error:", result.error)
         setError("Invalid email or password. Please try again.")
       } else if (result?.ok) {
-        router.push("/user/dashboard")
-        router.refresh()
+        console.log("[v0] Login successful, redirecting...")
+        window.location.href = "/user/dashboard"
       }
     } catch (error: unknown) {
+      console.error("[v0] Login exception:", error)
       setError("An unexpected error occurred. Please try again.")
-      console.error("Login error:", error)
     } finally {
       setIsLoading(false)
     }

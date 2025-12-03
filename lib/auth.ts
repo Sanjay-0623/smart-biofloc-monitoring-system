@@ -13,31 +13,42 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       authorize: async (credentials) => {
+        console.log("[v0] Auth attempt for email:", credentials?.email)
+
         if (!credentials?.email || !credentials?.password) {
+          console.log("[v0] Missing credentials")
           throw new Error("Missing email or password")
         }
 
-        const users = await sql`
-          SELECT * FROM profiles WHERE email = ${credentials.email}
-        `
+        try {
+          const users = await sql`
+            SELECT * FROM profiles WHERE email = ${credentials.email}
+          `
+          console.log("[v0] User query result:", users.length > 0 ? "User found" : "No user found")
 
-        const user = users[0]
+          const user = users[0]
 
-        if (!user || !user.password_hash) {
-          throw new Error("Invalid email or password")
-        }
+          if (!user || !user.password_hash) {
+            console.log("[v0] Invalid user or no password hash")
+            throw new Error("Invalid email or password")
+          }
 
-        const isValidPassword = await bcrypt.compare(credentials.password, user.password_hash)
+          const isValidPassword = await bcrypt.compare(credentials.password, user.password_hash)
+          console.log("[v0] Password validation:", isValidPassword ? "Success" : "Failed")
 
-        if (!isValidPassword) {
-          throw new Error("Invalid email or password")
-        }
+          if (!isValidPassword) {
+            throw new Error("Invalid email or password")
+          }
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.full_name,
-          role: user.role,
+          return {
+            id: user.id.toString(),
+            email: user.email,
+            name: user.full_name,
+            role: user.role || "user",
+          }
+        } catch (error) {
+          console.error("[v0] Auth error:", error)
+          throw error
         }
       },
     },
@@ -45,15 +56,21 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        console.log("[v0] JWT callback - adding user to token")
         token.id = user.id
         token.role = (user as any).role
+        token.email = user.email
+        token.name = user.name
       }
       return token
     },
     async session({ session, token }) {
+      console.log("[v0] Session callback - creating session")
       if (session.user) {
         ;(session.user as any).id = token.id
         ;(session.user as any).role = token.role
+        session.user.email = token.email as string
+        session.user.name = token.name as string
       }
       return session
     },
@@ -63,6 +80,8 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days session
   },
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-for-development-only-change-in-production",
+  debug: process.env.NODE_ENV === "development",
 }

@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
-import { Fish, AlertCircle, CheckCircle2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Fish, AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
@@ -18,7 +18,22 @@ export default function SignUpPage() {
   const [repeatPassword, setRepeatPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
   const router = useRouter()
+
+  useEffect(() => {
+    const initDb = async () => {
+      try {
+        console.log("[v0] Auto-initializing database...")
+        await fetch("/api/auth/init-db")
+      } catch (error) {
+        console.error("[v0] DB init error:", error)
+      } finally {
+        setIsInitializing(false)
+      }
+    }
+    initDb()
+  }, [])
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,24 +65,39 @@ export default function SignUpPage() {
     }
 
     try {
+      console.log("[v0] Submitting signup form...")
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, fullName }),
+        body: JSON.stringify({ email: email.trim(), password, fullName: fullName.trim() }),
       })
 
       const data = await response.json()
+      console.log("[v0] Signup response:", data)
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to create account. Please try again.")
       }
 
+      console.log("[v0] Signup successful, redirecting to login...")
       router.push("/auth/login?signup=success")
     } catch (error: unknown) {
+      console.error("[v0] Signup error:", error)
       setError(error instanceof Error ? error.message : "An unexpected error occurred. Please try again.")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (isInitializing) {
+    return (
+      <div className="relative min-h-screen w-full flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">Setting up your workspace...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -87,9 +117,11 @@ export default function SignUpPage() {
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary animate-float">
-              <Fish className="h-8 w-8 text-white" />
-            </div>
+            <Link href="/">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary animate-float cursor-pointer transition-transform hover:scale-110">
+                <Fish className="h-8 w-8 text-white" />
+              </div>
+            </Link>
             <h1 className="text-2xl font-bold gradient-text">Smart Biofloc System</h1>
           </div>
 
@@ -112,6 +144,7 @@ export default function SignUpPage() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="bg-background/50 transition-all focus:bg-background"
+                  autoComplete="name"
                 />
               </div>
 
@@ -127,6 +160,7 @@ export default function SignUpPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-background/50 transition-all focus:bg-background"
+                  autoComplete="email"
                 />
               </div>
 
@@ -142,6 +176,7 @@ export default function SignUpPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="bg-background/50 transition-all focus:bg-background"
+                  autoComplete="new-password"
                 />
                 <p className="text-xs text-muted-foreground">Must be at least 6 characters</p>
               </div>
@@ -158,6 +193,7 @@ export default function SignUpPage() {
                   value={repeatPassword}
                   onChange={(e) => setRepeatPassword(e.target.value)}
                   className="bg-background/50 transition-all focus:bg-background"
+                  autoComplete="new-password"
                 />
               </div>
 
@@ -175,7 +211,7 @@ export default function SignUpPage() {
               >
                 {isLoading ? (
                   <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Creating account...
                   </>
                 ) : (
