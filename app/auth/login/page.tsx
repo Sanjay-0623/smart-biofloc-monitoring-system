@@ -52,6 +52,7 @@ function LoginContent() {
         email: email.trim().toLowerCase(),
         password,
         redirect: false,
+        callbackUrl: "/user/dashboard",
       })
 
       console.log("[v0] SignIn result:", result)
@@ -59,14 +60,15 @@ function LoginContent() {
       if (result?.error) {
         console.log("[v0] Login error:", result.error)
         setError("Invalid email or password. Please try again.")
+        setIsLoading(false)
       } else if (result?.ok) {
-        console.log("[v0] Login successful, redirecting...")
-        window.location.href = "/user/dashboard"
+        console.log("[v0] Login successful, redirecting to:", result.url || "/user/dashboard")
+        router.push(result.url || "/user/dashboard")
+        router.refresh()
       }
     } catch (error: unknown) {
       console.error("[v0] Login exception:", error)
       setError("An unexpected error occurred. Please try again.")
-    } finally {
       setIsLoading(false)
     }
   }

@@ -56,23 +56,33 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        console.log("[v0] JWT callback - adding user to token")
+        console.log("[v0] JWT callback - adding user to token:", user.email)
         token.id = user.id
         token.role = (user as any).role
         token.email = user.email
         token.name = user.name
       }
+      console.log("[v0] JWT token created/updated")
       return token
     },
     async session({ session, token }) {
-      console.log("[v0] Session callback - creating session")
+      console.log("[v0] Session callback - creating session for:", token.email)
       if (session.user) {
         ;(session.user as any).id = token.id
         ;(session.user as any).role = token.role
         session.user.email = token.email as string
         session.user.name = token.name as string
       }
+      console.log("[v0] Session created successfully")
       return session
+    },
+    async redirect({ url, baseUrl }) {
+      console.log("[v0] Redirect callback - url:", url, "baseUrl:", baseUrl)
+      // Allows relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url
+      return `${baseUrl}/user/dashboard`
     },
   },
   pages: {
@@ -83,5 +93,5 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days session
   },
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-for-development-only-change-in-production",
-  debug: process.env.NODE_ENV === "development",
+  debug: true, // Always enable debug for better logging
 }
