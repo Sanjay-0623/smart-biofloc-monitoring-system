@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Upload, Loader2, AlertCircle, CheckCircle2, FileImage } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -25,6 +24,7 @@ export default function DiseaseDetectionUpload({ userId }: { userId: string }) {
   const [isUploading, setIsUploading] = useState(false)
   const [result, setResult] = useState<DetectionResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [hasAnalyzed, setHasAnalyzed] = useState(false)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -41,18 +41,17 @@ export default function DiseaseDetectionUpload({ userId }: { userId: string }) {
       setPreviewUrl(URL.createObjectURL(file))
       setError(null)
       setResult(null)
+      setHasAnalyzed(false)
     }
   }
 
   const handleUpload = async () => {
-    if (!selectedFile) return
+    if (!selectedFile || hasAnalyzed) return
 
     setIsUploading(true)
     setError(null)
 
     try {
-      console.log("[v0] Starting upload for file:", selectedFile.name)
-
       const formData = new FormData()
       formData.append("file", selectedFile)
       formData.append("userId", userId)
@@ -62,20 +61,16 @@ export default function DiseaseDetectionUpload({ userId }: { userId: string }) {
         body: formData,
       })
 
-      console.log("[v0] Response status:", response.status)
-
       if (!response.ok) {
         const errorData = await response.json()
-        console.error("[v0] API error:", errorData)
         throw new Error(errorData.details || errorData.error || "Detection failed")
       }
 
       const data = await response.json()
-      console.log("[v0] Detection successful:", data)
       setResult(data)
+      setHasAnalyzed(true)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to analyze image. Please try again."
-      console.error("[v0] Upload error:", err)
       setError(errorMessage)
     } finally {
       setIsUploading(false)
@@ -87,11 +82,11 @@ export default function DiseaseDetectionUpload({ userId }: { userId: string }) {
     setPreviewUrl(null)
     setResult(null)
     setError(null)
+    setHasAnalyzed(false)
   }
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      {/* Upload Section */}
       <Card>
         <CardHeader>
           <CardTitle>Upload Fish Image</CardTitle>
@@ -115,11 +110,16 @@ export default function DiseaseDetectionUpload({ userId }: { userId: string }) {
                 <Image src={previewUrl || "/placeholder.svg"} alt="Preview" fill className="object-contain" />
               </div>
               <div className="flex gap-2">
-                <Button onClick={handleUpload} disabled={isUploading} className="flex-1">
+                <Button onClick={handleUpload} disabled={isUploading || hasAnalyzed} className="flex-1">
                   {isUploading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Analyzing...
+                    </>
+                  ) : hasAnalyzed ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Analyzed
                     </>
                   ) : (
                     <>
@@ -144,7 +144,6 @@ export default function DiseaseDetectionUpload({ userId }: { userId: string }) {
         </CardContent>
       </Card>
 
-      {/* Results Section */}
       <Card>
         <CardHeader>
           <CardTitle>Detection Results</CardTitle>

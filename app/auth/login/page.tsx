@@ -1,8 +1,6 @@
 "use client"
 
 import type React from "react"
-
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,47 +8,40 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
+import { signIn, useSession } from "next-auth/react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [isChecking, setIsChecking] = useState(true)
   const router = useRouter()
+  const { data: session, status } = useSession()
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createClient()
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      if (session) {
-        // User is already logged in, redirect to dashboard
-        router.push("/user/dashboard")
-      } else {
-        setIsChecking(false)
-      }
+    if (status === "authenticated") {
+      router.push("/user/dashboard")
     }
-
-    checkAuth()
-  }, [router])
+  }, [status, router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const result = await signIn("credentials", {
         email,
         password,
+        redirect: false,
       })
-      if (error) throw error
-      router.push("/user/dashboard")
-      router.refresh()
+
+      if (result?.error) {
+        setError(result.error)
+      } else if (result?.ok) {
+        router.push("/user/dashboard")
+        router.refresh()
+      }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
@@ -58,7 +49,7 @@ export default function LoginPage() {
     }
   }
 
-  if (isChecking) {
+  if (status === "loading") {
     return (
       <div className="flex min-h-screen w-full items-center justify-center">
         <div className="text-center">

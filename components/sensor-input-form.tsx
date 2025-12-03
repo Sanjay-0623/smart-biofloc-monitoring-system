@@ -9,25 +9,15 @@ import { useToast } from "@/hooks/use-toast"
 type Reading = {
   ph: number
   temperature_c: number
-  dissolved_oxygen_mg_l: number
-  tds_ppm: number
-  salinity_ppt: number
-  ammonia_mg_l: number
-  nitrite_mg_l: number
-  nitrate_mg_l: number
-  alkalinity_mg_l: number
+  ultrasonic_cm: number
+  turbidity_ntu: number
 }
 
 const defaultReading: Reading = {
   ph: 7.4,
-  temperature_c: 28,
-  dissolved_oxygen_mg_l: 5.6,
-  tds_ppm: 1150,
-  salinity_ppt: 3,
-  ammonia_mg_l: 0.2,
-  nitrite_mg_l: 0.08,
-  nitrate_mg_l: 22,
-  alkalinity_mg_l: 150,
+  temperature_c: 28.0,
+  ultrasonic_cm: 80.0,
+  turbidity_ntu: 50.0,
 }
 
 export function SensorInputForm() {
@@ -67,77 +57,66 @@ export function SensorInputForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Live Reading</CardTitle>
+        <CardTitle>Live Sensor Readings</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-          <LabeledInput label="pH" value={reading.ph} onChange={(v) => onChange("ph", v)} step="0.01" />
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-2">
           <LabeledInput
-            label="Temp (°C)"
+            label="pH Level"
+            value={reading.ph}
+            onChange={(v) => onChange("ph", v)}
+            step="0.01"
+            min="0"
+            max="14"
+          />
+          <LabeledInput
+            label="Temperature (°C)"
             value={reading.temperature_c}
             onChange={(v) => onChange("temperature_c", v)}
             step="0.1"
+            min="0"
+            max="50"
           />
           <LabeledInput
-            label="DO (mg/L)"
-            value={reading.dissolved_oxygen_mg_l}
-            onChange={(v) => onChange("dissolved_oxygen_mg_l", v)}
+            label="Water Level (cm)"
+            value={reading.ultrasonic_cm}
+            onChange={(v) => onChange("ultrasonic_cm", v)}
             step="0.1"
+            min="0"
+            max="200"
           />
-          <LabeledInput label="TDS (ppm)" value={reading.tds_ppm} onChange={(v) => onChange("tds_ppm", v)} />
           <LabeledInput
-            label="Salinity (ppt)"
-            value={reading.salinity_ppt}
-            onChange={(v) => onChange("salinity_ppt", v)}
+            label="Turbidity (NTU)"
+            value={reading.turbidity_ntu}
+            onChange={(v) => onChange("turbidity_ntu", v)}
             step="0.1"
-          />
-          <LabeledInput
-            label="Ammonia (mg/L)"
-            value={reading.ammonia_mg_l}
-            onChange={(v) => onChange("ammonia_mg_l", v)}
-            step="0.01"
-          />
-          <LabeledInput
-            label="Nitrite (mg/L)"
-            value={reading.nitrite_mg_l}
-            onChange={(v) => onChange("nitrite_mg_l", v)}
-            step="0.01"
-          />
-          <LabeledInput
-            label="Nitrate (mg/L)"
-            value={reading.nitrate_mg_l}
-            onChange={(v) => onChange("nitrate_mg_l", v)}
-            step="0.1"
-          />
-          <LabeledInput
-            label="Alkalinity (mg/L)"
-            value={reading.alkalinity_mg_l}
-            onChange={(v) => onChange("alkalinity_mg_l", v)}
+            min="0"
+            max="1000"
           />
         </div>
 
         <div className="space-y-3">
-          <Button onClick={submit} disabled={loading}>
-            {loading ? "Predicting..." : "Predict Quality"}
+          <Button onClick={submit} disabled={loading} className="w-full">
+            {loading ? "Analyzing..." : "Analyze Water Quality"}
           </Button>
 
           {result && (
             <div className="space-y-2 rounded-lg border p-4">
               <div className="text-sm">
-                Score: <b>{result.score}</b> —{" "}
+                Quality Score: <b className="text-lg">{result.score}</b> / 100 —{" "}
                 <b
                   className={
                     result.category === "good"
-                      ? "text-sky-600"
+                      ? "text-green-600"
                       : result.category === "warning"
                         ? "text-orange-500"
                         : "text-red-600"
                   }
                 >
                   {result.category.toUpperCase()}
-                </b>{" "}
-                — {result.advice.summary}
+                </b>
               </div>
+              <p className="text-sm text-foreground/70">{result.advice.summary}</p>
 
               {result.category !== "good" && result.advice.actions.length > 0 && (
                 <div className="mt-3 space-y-2 border-t pt-3">
@@ -171,11 +150,15 @@ function LabeledInput({
   value,
   onChange,
   step,
+  min,
+  max,
 }: {
   label: string
   value: number
   onChange: (v: string) => void
   step?: string
+  min?: string
+  max?: string
 }) {
   return (
     <label className="space-y-1">
@@ -184,6 +167,8 @@ function LabeledInput({
         type="number"
         value={Number.isFinite(value) ? value : ""}
         step={step ?? "1"}
+        min={min}
+        max={max}
         onChange={(e) => onChange(e.target.value)}
       />
     </label>

@@ -6,38 +6,42 @@ export function getRecommendations(reading: Reading, result: { score: number; ca
   const issues: string[] = []
   const actions: string[] = []
 
-  // Heuristic thresholds (adjust to your species/system)
-  if (reading.dissolved_oxygen_mg_l < 5) {
-    issues.push("Low dissolved oxygen")
-    actions.push("Increase aeration immediately; check blowers and diffusers.")
+  // pH checks
+  if (reading.ph < 6.5 || reading.ph > 8.5) {
+    issues.push("pH out of optimal range (6.5-8.5)")
+    if (reading.ph < 6.5) {
+      actions.push("pH is too low - Add alkalinity buffer (sodium bicarbonate) gradually to raise pH.")
+    } else {
+      actions.push("pH is too high - Reduce aeration temporarily and monitor carefully.")
+    }
   }
-  if (reading.ammonia_mg_l > 0.5) {
-    issues.push("Elevated ammonia")
-    actions.push("Reduce feeding temporarily; consider partial water exchange and add probiotics.")
+
+  // Temperature checks
+  if (reading.temperature_c < 26 || reading.temperature_c > 32) {
+    issues.push("Temperature not optimal (26-32°C)")
+    if (reading.temperature_c < 26) {
+      actions.push("Water is too cold - Increase heating to maintain optimal temperature for fish health.")
+    } else {
+      actions.push("Water is too warm - Increase aeration and consider cooling methods to prevent stress.")
+    }
   }
-  if (reading.nitrite_mg_l > 0.3) {
-    issues.push("High nitrite")
-    actions.push("Add chloride salt (NaCl) to mitigate nitrite toxicity; monitor biofloc density.")
+
+  // Water level checks
+  if (reading.ultrasonic_cm < 50) {
+    issues.push("Low water level detected")
+    actions.push("Water level is low - Add fresh water immediately to maintain proper volume.")
+  } else if (reading.ultrasonic_cm > 120) {
+    issues.push("High water level detected")
+    actions.push("Water level is too high - Check for overflow and drainage system.")
   }
-  if (reading.nitrate_mg_l > 50) {
-    issues.push("High nitrate")
-    actions.push("Schedule partial water exchange and evaluate feeding rate and carbon source.")
-  }
-  if (reading.ph < 7.0 || reading.ph > 8.5) {
-    issues.push("pH out of range")
-    actions.push("Adjust alkalinity; use buffers (e.g., sodium bicarbonate) gradually.")
-  }
-  if (reading.alkalinity_mg_l < 120) {
-    issues.push("Low alkalinity")
-    actions.push("Add alkalinity source (e.g., sodium bicarbonate) to stabilize pH and nitrification.")
-  }
-  if (reading.temperature_c < 26 || reading.temperature_c > 30) {
-    issues.push("Temperature not optimal")
-    actions.push("Adjust heating/cooling; ensure stable temperature to avoid stress.")
-  }
-  if (reading.tds_ppm > 2000) {
-    issues.push("High TDS")
-    actions.push("Plan water exchange and review solids removal and carbon dosing.")
+
+  // Turbidity checks
+  if (reading.turbidity_ntu > 100) {
+    issues.push("High turbidity detected")
+    actions.push("Turbidity is elevated - Check biofloc density, reduce feeding rate, and ensure proper aeration.")
+  } else if (reading.turbidity_ntu < 20) {
+    issues.push("Low turbidity (biofloc may be insufficient)")
+    actions.push("Biofloc density may be low - Verify carbon source dosing and probiotic levels.")
   }
 
   // Deduplicate actions
@@ -46,8 +50,8 @@ export function getRecommendations(reading: Reading, result: { score: number; ca
   return {
     summary:
       result.category === "good"
-        ? "Conditions look good. Continue routine monitoring."
-        : "Attention required. See recommended actions.",
+        ? "All sensor readings are within optimal range. Continue routine monitoring."
+        : "Some parameters need attention. Please review recommendations below.",
     issues,
     actions: uniqueActions,
   }

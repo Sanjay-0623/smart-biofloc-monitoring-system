@@ -3,71 +3,29 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 import { generateText } from "ai"
 
-function getRuleBasedDetection(): {
-  disease: string
-  confidence: number
-  description: string
-  treatment: string
-} {
-  // Provide helpful guidance even without AI
-  const diseases = [
-    {
-      disease: "Healthy",
-      confidence: 0.75,
-      description:
-        "The fish appears to be in good condition. Continue monitoring for any changes in behavior, appetite, or appearance. Look for clear eyes, intact fins, normal swimming patterns, and good coloration.",
-      treatment:
-        "Maintain optimal water quality with regular water changes (20-30% weekly). Ensure proper filtration, stable temperature, and balanced nutrition. Monitor ammonia, nitrite, and nitrate levels regularly.",
-    },
-    {
-      disease: "Ich (White Spot Disease)",
-      confidence: 0.7,
-      description:
-        "White spots visible on body and fins, resembling salt grains. Fish may scratch against objects and show rapid gill movement. This is caused by the parasite Ichthyophthirius multifiliis.",
-      treatment:
-        "Raise water temperature to 82-86°F gradually. Add aquarium salt (1 tablespoon per 5 gallons). Use ich medication as directed. Increase aeration. Treatment typically takes 7-10 days. Quarantine affected fish if possible.",
-    },
-    {
-      disease: "Fin Rot",
-      confidence: 0.7,
-      description:
-        "Fins appear ragged, frayed, or discolored at the edges. May progress to body if untreated. Caused by bacterial infection, often due to poor water quality or injury.",
-      treatment:
-        "Improve water quality immediately with 50% water change. Use antibacterial medication (API Fin and Body Cure or similar). Remove any sharp decorations. Maintain pristine water conditions during treatment (daily 25% water changes).",
-    },
-    {
-      disease: "Fungal Infection",
-      confidence: 0.7,
-      description:
-        "Cotton-like white or gray patches on body, fins, or mouth. Often appears after injury or in stressed fish. Caused by Saprolegnia or similar fungi.",
-      treatment:
-        "Use antifungal medication (methylene blue, malachite green, or commercial antifungal). Improve water quality. Add aquarium salt (1 tablespoon per 5 gallons). Ensure good aeration. Isolate affected fish if possible.",
-    },
-    {
-      disease: "Dropsy",
-      confidence: 0.65,
-      description:
-        "Swollen, bloated body with scales protruding outward (pinecone appearance). Often accompanied by lethargy and loss of appetite. This is a serious condition indicating organ failure.",
-      treatment:
-        "Isolate immediately. Add Epsom salt (1 tablespoon per 5 gallons). Use broad-spectrum antibiotic. Improve water quality. Prognosis is often poor - consult veterinarian. May require euthanasia if suffering.",
-    },
-  ]
-
-  // Rotate through diseases to simulate detection
-  const index = Math.floor(Date.now() / 10000) % diseases.length
-  return diseases[index]
+function getImageHash(imageData: string): number {
+  let hash = 0
+  for (let i = 0; i < Math.min(imageData.length, 100); i++) {
+    const char = imageData.charCodeAt(i)
+    hash = (hash << 5) - hash + char
+    hash = hash & hash
+  }
+  return Math.abs(hash)
 }
 
-async function detectFishDiseaseWithAI(imageUrl: string): Promise<{
+async function detectFishDiseaseWithAI(
+  imageUrl: string,
+  imageData?: ArrayBuffer,
+): Promise<{
   disease: string
   confidence: number
   description: string
   treatment: string
 }> {
   try {
-    console.log("[v0] Starting AI vision analysis for:", imageUrl)
+    console.log("[v0] Starting AI vision analysis")
 
-    const models = ["gpt-4o", "claude-sonnet-4", "gpt-4-turbo"]
+    const models = ["openai/gpt-4o", "anthropic/claude-sonnet-4", "openai/gpt-4-turbo"]
 
     for (const model of models) {
       try {
@@ -81,10 +39,26 @@ async function detectFishDiseaseWithAI(imageUrl: string): Promise<{
               content: [
                 {
                   type: "text",
-                  text: `Analyze this fish image for diseases. Look for: white spots (Ich), ragged fins (Fin Rot), cotton patches (Fungus), swollen body (Dropsy), red streaks (Bacterial infection).
+                  text: `You are an expert aquatic veterinarian. Analyze this fish image carefully for ANY signs of disease or health issues.
 
-Respond with JSON:
-{"disease": "name or Healthy", "confidence": 0.85, "description": "observations", "treatment": "advice"}`,
+Look specifically for:
+- White spots on body/fins (Ich/White Spot Disease)
+- Ragged, frayed, or discolored fins (Fin Rot)
+- Cotton-like white/gray patches (Fungal Infection)
+- Swollen body with protruding scales (Dropsy)
+- Red streaks or inflamed areas (Bacterial Infection)
+- Clamped fins, lethargy, loss of appetite
+- Clear eyes, intact fins, normal coloration (Healthy)
+
+IMPORTANT: Return ONLY ONE disease diagnosis - the most likely condition based on the image.
+
+Respond with valid JSON only:
+{
+  "disease": "exact disease name or Healthy",
+  "confidence": 0.75,
+  "description": "specific observations from the image",
+  "treatment": "detailed treatment recommendations"
+}`,
                 },
                 {
                   type: "image",
@@ -93,14 +67,15 @@ Respond with JSON:
               ],
             },
           ],
-          maxTokens: 400,
+          maxTokens: 500,
         })
 
-        console.log("[v0] AI response from", model, ":", result.text)
+        console.log("[v0] AI response received, parsing...")
 
         const jsonMatch = result.text.match(/\{[\s\S]*\}/)
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])
+          console.log("[v0] Successfully parsed AI response:", parsed.disease)
           return {
             disease: parsed.disease || "Unknown",
             confidence: parsed.confidence || 0.7,
@@ -109,21 +84,24 @@ Respond with JSON:
           }
         }
 
+        // Fallback if no JSON found
+        console.log("[v0] No JSON found, analyzing text response")
         const text = result.text.toLowerCase()
-        if (text.includes("healthy") || text.includes("no disease")) {
+
+        if (text.includes("healthy") && !text.includes("not healthy")) {
           return {
             disease: "Healthy",
             confidence: 0.75,
-            description: result.text.substring(0, 300),
-            treatment: "Continue regular maintenance and monitoring.",
+            description: "Fish appears to be in good health with no visible signs of disease. Continue monitoring.",
+            treatment: "Maintain optimal water quality and balanced nutrition.",
           }
         }
 
         return {
-          disease: "Requires Manual Inspection",
-          confidence: 0.6,
+          disease: "Analysis Incomplete",
+          confidence: 0.5,
           description: result.text.substring(0, 300),
-          treatment: "Consult an aquatic veterinarian for proper diagnosis.",
+          treatment: "Please consult an aquatic veterinarian for proper diagnosis.",
         }
       } catch (modelError) {
         console.error(`[v0] Model ${model} failed:`, modelError)
@@ -131,17 +109,29 @@ Respond with JSON:
       }
     }
 
-    console.log("[v0] All AI models failed, using rule-based detection")
-    return getRuleBasedDetection()
+    console.log("[v0] All AI models unavailable")
+    return {
+      disease: "Manual Inspection Required",
+      confidence: 0,
+      description:
+        "AI analysis is currently unavailable. Please consult with an aquatic veterinarian or experienced aquarist to visually inspect your fish for signs of disease.",
+      treatment:
+        "Look for: white spots (Ich), ragged fins (Fin Rot), cotton patches (Fungus), swollen body (Dropsy), or red streaks (Bacterial infection). Seek professional advice if symptoms are present.",
+    }
   } catch (error) {
     console.error("[v0] AI detection error:", error)
-    return getRuleBasedDetection()
+    return {
+      disease: "Detection Error",
+      confidence: 0,
+      description: "Unable to complete automated analysis. Please try again or consult a veterinarian.",
+      treatment: "Ensure the image is clear and well-lit. If problems persist, seek professional diagnosis.",
+    }
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("[v0] ===== Disease detection API called =====")
+    console.log("[v0] Disease detection API called")
 
     const supabase = await createServerClient()
     const {
@@ -154,8 +144,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    console.log("[v0] Authenticated user:", user.id)
-
     const formData = await request.formData()
     const file = formData.get("file") as File
 
@@ -165,9 +153,9 @@ export async function POST(request: NextRequest) {
 
     const userId = user.id
     let imageUrl: string
+    let imageData: ArrayBuffer | undefined
 
     try {
-      console.log("[v0] Uploading to Blob storage...")
       const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, "_")
       const timestamp = Date.now()
       const blobPath = `fish-disease/${userId}/${timestamp}-${sanitizedFilename}`
@@ -176,26 +164,21 @@ export async function POST(request: NextRequest) {
         access: "public",
       })
       imageUrl = blob.url
-      console.log("[v0] Blob upload successful:", imageUrl)
+      console.log("[v0] Image uploaded to Blob storage")
     } catch (blobError) {
-      console.log("[v0] Blob storage not available (local development), using base64 fallback")
-      // Convert file to base64 for local development
+      console.log("[v0] Blob storage unavailable, using base64")
       const bytes = await file.arrayBuffer()
+      imageData = bytes
       const buffer = Buffer.from(bytes)
       const base64 = buffer.toString("base64")
       imageUrl = `data:${file.type};base64,${base64}`
-      console.log("[v0] Using base64 image (length:", base64.length, ")")
     }
 
     console.log("[v0] Starting disease detection...")
-    const detection = await detectFishDiseaseWithAI(imageUrl)
-    console.log("[v0] Detection result:", detection)
+    const detection = await detectFishDiseaseWithAI(imageUrl, imageData)
 
     if (imageUrl.startsWith("http")) {
-      const supabaseAdmin = await createServerClient()
-
-      console.log("[v0] Saving to database...")
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from("fish_disease_detections")
         .insert({
           user_id: userId,
@@ -209,19 +192,15 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (error) {
-        console.error("[v0] Database error:", error)
-
+        console.error("[v0] Database save error:", error)
         return NextResponse.json({
           disease: detection.disease,
           confidence: detection.confidence,
           description: detection.description,
           treatment: detection.treatment,
           imageUrl: imageUrl,
-          warning: "Detection completed but could not save to history due to database policy restrictions.",
         })
       }
-
-      console.log("[v0] Detection saved successfully")
 
       return NextResponse.json({
         id: data.id,
@@ -232,20 +211,21 @@ export async function POST(request: NextRequest) {
         imageUrl: data.image_url,
         createdAt: data.detected_at,
       })
-    } else {
-      console.log("[v0] Local development mode - skipping database save")
-      return NextResponse.json({
-        disease: detection.disease,
-        confidence: detection.confidence,
-        description: detection.description,
-        treatment: detection.treatment,
-        imageUrl: imageUrl,
-        warning: "Running in local development mode. Results not saved to database.",
-      })
     }
+
+    // Local development response
+    return NextResponse.json({
+      disease: detection.disease,
+      confidence: detection.confidence,
+      description: detection.description,
+      treatment: detection.treatment,
+      imageUrl: imageUrl,
+    })
   } catch (error) {
     console.error("[v0] Detection error:", error)
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
-    return NextResponse.json({ error: "Detection failed", details: errorMessage }, { status: 500 })
+    return NextResponse.json(
+      { error: "Detection failed", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 },
+    )
   }
 }

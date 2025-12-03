@@ -35,13 +35,8 @@ export function UploadCsv() {
         const payload = {
           ph: Number(r.ph),
           temperature_c: Number(r.temperature_c),
-          dissolved_oxygen_mg_l: Number(r.dissolved_oxygen_mg_l),
-          tds_ppm: Number(r.tds_ppm),
-          salinity_ppt: Number(r.salinity_ppt),
-          ammonia_mg_l: Number(r.ammonia_mg_l),
-          nitrite_mg_l: Number(r.nitrite_mg_l),
-          nitrate_mg_l: Number(r.nitrate_mg_l),
-          alkalinity_mg_l: Number(r.alkalinity_mg_l),
+          ultrasonic_cm: Number(r.ultrasonic_cm),
+          turbidity_ntu: Number(r.turbidity_ntu),
         }
         const res = await fetch("/api/predict", {
           method: "POST",
@@ -70,8 +65,7 @@ export function UploadCsv() {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-foreground/70">
-          Expected headers: timestamp, ph, temperature_c, dissolved_oxygen_mg_l, tds_ppm, salinity_ppt, ammonia_mg_l,
-          nitrite_mg_l, nitrate_mg_l, alkalinity_mg_l
+          Expected headers: timestamp, ph, temperature_c, ultrasonic_cm, turbidity_ntu
         </p>
         <input type="file" accept=".csv" onChange={onFile} className="text-sm" />
         <Button asChild variant="outline">

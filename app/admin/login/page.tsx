@@ -1,10 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createBrowserClient } from "@/lib/supabase/client"
+import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,7 +17,6 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createBrowserClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,18 +24,22 @@ export default function AdminLoginPage() {
     setError(null)
 
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      const result = await signIn("credentials", {
         email,
         password,
+        redirect: false,
       })
 
-      if (signInError) throw signInError
+      if (result?.error) {
+        throw new Error(result.error)
+      }
 
-      // Check if user is admin
-      const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).single()
+      // Check if user is admin by fetching from API
+      const response = await fetch("/api/auth/check-admin")
+      const data = await response.json()
 
-      if (profile?.role !== "admin") {
-        await supabase.auth.signOut()
+      if (!data.isAdmin) {
+        await signIn("credentials", { redirect: false }) // This will clear session
         throw new Error("Access denied. Admin privileges required.")
       }
 
