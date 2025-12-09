@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [errorDetails, setErrorDetails] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
@@ -22,6 +23,7 @@ export default function LoginPage() {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+    setErrorDetails(null)
 
     console.log("[v0] Attempting login for:", email)
 
@@ -36,6 +38,9 @@ export default function LoginPage() {
 
       if (!response.ok) {
         setError(data.error || "Invalid email or password")
+        if (data.details) {
+          setErrorDetails(data.details)
+        }
         setIsLoading(false)
         return
       }
@@ -45,7 +50,12 @@ export default function LoginPage() {
       window.location.href = "/user/dashboard"
     } catch (error) {
       console.error("[v0] Login error:", error)
-      setError("An error occurred. Please try again.")
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        setError("Cannot connect to server. Make sure the development server is running.")
+        setErrorDetails("Run 'npm run dev' in your terminal")
+      } else {
+        setError("An error occurred. Please try again.")
+      }
       setIsLoading(false)
     }
   }
@@ -121,7 +131,14 @@ export default function LoginPage() {
               {error && (
                 <Alert variant="destructive" className="animate-in slide-in-from-top-2">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
+                  <AlertDescription>
+                    <div>{error}</div>
+                    {errorDetails && (
+                      <div className="mt-2 text-xs opacity-80 font-mono bg-destructive/20 p-2 rounded">
+                        {errorDetails}
+                      </div>
+                    )}
+                  </AlertDescription>
                 </Alert>
               )}
 

@@ -10,6 +10,7 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/auth/") ||
     path.startsWith("/_next") ||
     path.startsWith("/api/auth/") ||
+    path === "/api/predict" || // Added /api/predict to allow ESP32 to send data without authentication
     path.match(/\.(ico|png|jpg|jpeg|svg|gif|webp)$/)
 
   if (isPublicPath) {

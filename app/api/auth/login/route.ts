@@ -11,7 +11,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
-    const user = await validateCredentials(email, password)
+    let user
+    try {
+      user = await validateCredentials(email, password)
+    } catch (dbError) {
+      console.error("[v0] Database error during login:", dbError)
+      return NextResponse.json(
+        {
+          error: "Database connection failed. Please check if DATABASE_URL is set in .env.local",
+          details: "See VSCODE_SETUP_GUIDE.md for setup instructions",
+        },
+        { status: 500 },
+      )
+    }
 
     if (!user) {
       console.log("[v0] Invalid credentials")
@@ -33,6 +45,12 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("[v0] Login error:", error)
-    return NextResponse.json({ error: "Login failed. Please try again." }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Login failed. Please try again.",
+        hint: "Check terminal logs for details",
+      },
+      { status: 500 },
+    )
   }
 }
